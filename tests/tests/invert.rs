@@ -10,7 +10,7 @@ fn test_verilator() {
     let temp_dir = tempdir().expect("error making temporary directory");
     // TODO: Revert when it's working
     // let temp_dir_path = temp_dir.path();
-    let temp_dir_path = temp_dir.into_path();
+    let temp_dir_path = temp_dir.keep();
 
     dbg!(&temp_dir_path);
 
@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
         top.eval();
         std::cout << "out_1d: " << (unsigned)top.out_1d << std::endl;
     }
-    return 1;
+    return 0;
 }
 "#;
 

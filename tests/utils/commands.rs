@@ -104,7 +104,7 @@ pub fn cargo(args: &[&str], working_dir: Option<&Path>) -> Result<process::Outpu
 pub fn cotim(args: &[&str], working_dir: Option<&Path>) -> Result<process::Output, Error> {
     // debug!("{} $ {} {}", working_dir.unwrap_or(Path::new("")).to_string_lossy(), "cotim".bold(), args.join(" ").bold());
 
-    let mut command = assert_cmd::Command::cargo_bin("cotim_generator").unwrap();
+    let mut command = Command::new(assert_cmd::cargo::cargo_bin!());
 
     if let Some(working_dir) = working_dir {
         command.current_dir(working_dir);

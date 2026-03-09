@@ -422,6 +422,6 @@ mod tests {
 
     #[test]
     fn parse_ok() {
-        dbg!(parse(Path::new("../mux.sv")).unwrap());
+        dbg!(parse(Path::new("mux.sv")).unwrap());
     }
 }
