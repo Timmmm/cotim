@@ -30,12 +30,7 @@ fn main() -> Result<()> {
 
     parser::validate(&parse_result)?;
 
-    // dbg!(&parse_result);
-
     let output = generator::generate(&parse_result)?;
-
-    // println!("{}", output.sv);
-    // println!("{}", output.rs);
 
     fs::write(args.sv, output.sv)?;
     fs::write(args.rs, output.rs)?;
