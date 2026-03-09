@@ -1,6 +1,6 @@
 # Cotim
 
-Cotim is a simple Rust/SystemVerilog co-simulation system.
+Cotim is a simple tool to help SystemVerilog modules in Rust using DPI-C.
 
 First you write a SystemVerilog module that you want to implement in Rust:
 
