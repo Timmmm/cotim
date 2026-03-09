@@ -47,7 +47,7 @@ pub fn parse(path: &Path) -> Result<ParseResult> {
     let defines = HashMap::new();
     let includes: Vec<PathBuf> = Vec::new();
 
-    let (syntax_tree, _new_defines) = parse_sv(&path, &defines, &includes, true, false)?;
+    let (syntax_tree, _new_defines) = parse_sv(path, &defines, &includes, true, false)?;
     // print_full_tree(&syntax_tree, true);
     let ports = analyze_defs(&syntax_tree)?;
     Ok(ports)
@@ -247,9 +247,8 @@ fn port_list(mod_def: &ModuleDeclarationAnsi, syntax_tree: &SyntaxTree) -> Resul
                                         }
                                     }
 
-                                    match &v.nodes.1 {
-                                        Some(Signing::Signed(_)) => bail!("ports can't be signed"),
-                                        _ => {}
+                                    if let Some(Signing::Signed(_)) = &v.nodes.1 {
+                                        bail!("ports can't be signed");
                                     }
 
                                     match v.nodes.2.as_slice() {
