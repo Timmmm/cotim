@@ -1,5 +1,8 @@
-
-use std::{io, fmt, path::Path, process::{self, Command}};
+use std::{
+    fmt, io,
+    path::Path,
+    process::{self, Command},
+};
 // use colored::*;
 // use log::{debug};
 
@@ -22,13 +25,13 @@ impl fmt::Debug for ProcessError {
         write!(
             f,
             "{} {}\n{} {:?}\n{} {}\n{} {}\n",
-            "process exited with exit code",//.red(),
-            self.output.status.to_string(),//.red().bold(),
-            "Command:",//.bold(),
+            "process exited with exit code", //.red(),
+            self.output.status.to_string(),  //.red().bold(),
+            "Command:",                      //.bold(),
             self.command,
-            "Stdout:",//.bold(),
+            "Stdout:", //.bold(),
             String::from_utf8_lossy(&self.output.stdout),
-            "Stderr:",//.bold(),
+            "Stderr:", //.bold(),
             String::from_utf8_lossy(&self.output.stderr),
         )
     }
@@ -42,13 +45,13 @@ impl fmt::Display for Error {
                 write!(
                     f,
                     "{} {}\n{} {:?}\n{} {}\n{} {}\n",
-                    "process exited with exit code",//.red(),
-                    e.output.status.to_string(),//.red().bold(),
-                    "Command:",//.bold(),
+                    "process exited with exit code", //.red(),
+                    e.output.status.to_string(),     //.red().bold(),
+                    "Command:",                      //.bold(),
                     e.command,
-                    "Stdout:",//.bold(),
+                    "Stdout:", //.bold(),
                     String::from_utf8_lossy(&e.output.stdout),
-                    "Stderr:",//.bold(),
+                    "Stderr:", //.bold(),
                     String::from_utf8_lossy(&e.output.stderr),
                 )
             }
@@ -62,11 +65,14 @@ impl From<io::Error> for Error {
     }
 }
 
-impl std::error::Error for Error {
-}
+impl std::error::Error for Error {}
 
 /// Run a git command with the given arguments in the given directory.
-pub fn command(cmd: &str, args: &[&str], working_dir: Option<&Path>) -> Result<process::Output, Error> {
+pub fn command(
+    cmd: &str,
+    args: &[&str],
+    working_dir: Option<&Path>,
+) -> Result<process::Output, Error> {
     // debug!("{} $ {} {}", working_dir.unwrap_or(Path::new("")).to_string_lossy(), cmd.bold(), args.join(" ").bold());
 
     let mut command = Command::new(cmd);
@@ -74,16 +80,17 @@ pub fn command(cmd: &str, args: &[&str], working_dir: Option<&Path>) -> Result<p
         command.current_dir(working_dir);
     }
 
-    let output = command
-        .args(args)
-        .output()?;
+    let output = command.args(args).output()?;
 
     // debug!("{:?}", output);
 
     if !output.status.success() {
         return Err(Error::Process(ProcessError {
             output,
-            command: std::iter::once(&cmd).chain(args.iter()).map(|&s| s.to_owned()).collect(),
+            command: std::iter::once(&cmd)
+                .chain(args.iter())
+                .map(|&s| s.to_owned())
+                .collect(),
         }));
     }
 
@@ -110,16 +117,17 @@ pub fn cotim(args: &[&str], working_dir: Option<&Path>) -> Result<process::Outpu
         command.current_dir(working_dir);
     }
 
-    let output = command
-        .args(args)
-        .output()?;
+    let output = command.args(args).output()?;
 
     // debug!("{:?}", output);
 
     if !output.status.success() {
         return Err(Error::Process(ProcessError {
             output,
-            command: std::iter::once(&"cotim_generator").chain(args.iter()).map(|&s| s.to_owned()).collect(),
+            command: std::iter::once(&"cotim_generator")
+                .chain(args.iter())
+                .map(|&s| s.to_owned())
+                .collect(),
         }));
     }
 

@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
-use crate::parser::{ParseResult, Port, Direction};
+use crate::parser::{Direction, ParseResult, Port};
 
 pub struct Output {
     pub sv: String,
@@ -31,13 +31,15 @@ trait ParseResultUtils {
 impl ParseResultUtils for ParseResult {
     fn sv_trigger_expression(&self) -> Result<String> {
         Ok(match &self.trigger {
-            Some(trigger) => {
-                trigger.clone()
-            }
+            Some(trigger) => trigger.clone(),
             None => {
-                let trigger_port = self.ports.iter().find(|p| p.trigger).ok_or(anyhow!("No trigger set"))?;
+                let trigger_port = self
+                    .ports
+                    .iter()
+                    .find(|p| p.trigger)
+                    .ok_or(anyhow!("No trigger set"))?;
                 format!("posedge {}", trigger_port.name)
-            },
+            }
         })
     }
 }
@@ -92,7 +94,11 @@ impl PortGenerationUtils for Port {
                 None => name.clone(),
             };
 
-            decl_args.push(format!("{} bit[{}:0] {decl_name}", self.sv_arg_decl_direction(), self.size_inner - 1));
+            decl_args.push(format!(
+                "{} bit[{}:0] {decl_name}",
+                self.sv_arg_decl_direction(),
+                self.size_inner - 1
+            ));
             call_args.push(format!("{name}{outer_slice_fragment}"));
         };
 
@@ -102,11 +108,11 @@ impl PortGenerationUtils for Port {
                 for i in 0..size_outer {
                     add_args(Some(i));
                 }
-            },
+            }
             None => {
                 // Single value.
                 add_args(None);
-            },
+            }
         }
 
         (DeclArgs(decl_args), CallArgs(call_args))
@@ -134,11 +140,11 @@ impl PortGenerationUtils for Port {
                 for i in 0..size_outer {
                     add_args(Some(i));
                 }
-            },
+            }
             None => {
                 // Single value. (But 128 bits are sent as 2x 64-bit.)
                 add_args(None);
-            },
+            }
         }
 
         DeclArgs(decl_args)
@@ -161,7 +167,14 @@ impl PortGenerationUtils for Port {
             };
             match self.size_outer {
                 Some(size_outer) => {
-                    let elems = (0..size_outer).map(|i| format!("{ref_type}*{func}({name}___{i}.try_into().unwrap(), {size_inner})")).collect::<Vec<String>>().join(",");
+                    let elems = (0..size_outer)
+                        .map(|i| {
+                            format!(
+                                "{ref_type}*{func}({name}___{i}.try_into().unwrap(), {size_inner})"
+                            )
+                        })
+                        .collect::<Vec<String>>()
+                        .join(",");
                     format!("{name}: [{elems}],")
                 }
                 None => {
@@ -186,7 +199,8 @@ fn generate_sv(parse_result: &ParseResult) -> Result<String> {
         tick_call_args.extend(port_tick_call_args.0.into_iter());
     }
 
-    Ok(format!(r#"
+    Ok(format!(
+        r#"
     import "DPI-C" function chandle {prefix}_new({new_decl_args});
     import "DPI-C" function void {prefix}_free(input chandle ___instance);
     import "DPI-C" function byte unsigned {prefix}_tick({tick_decl_args});
@@ -223,7 +237,6 @@ fn generate_sv(parse_result: &ParseResult) -> Result<String> {
 }
 
 fn generate_rs(parse_result: &ParseResult) -> Result<String> {
-
     // User should implement this code:
     //
     // struct Instance {
@@ -263,9 +276,9 @@ fn generate_rs(parse_result: &ParseResult) -> Result<String> {
 
         input_initialisation.push_str(&port.rs_input_output_initialisation(Direction::Input));
         output_initialisation.push_str(&port.rs_input_output_initialisation(Direction::Output));
-
     }
-    Ok(format!(r#"
+    Ok(format!(
+        r#"
 use std::sync::{{Arc, Mutex}};
 use bitvec::{{slice::BitSlice, ptr::{{bitslice_from_raw_parts, bitslice_from_raw_parts_mut}}}};
 use super::Instance;
@@ -327,11 +340,11 @@ extern "C" fn {prefix}_free(instance: *const Mutex<Instance>) {{
     }}
 }}
 "#,
-        prefix=parse_result.module_name,
-        input_members=input_members,
-        output_members=output_members,
-        input_initialisation=input_initialisation,
-        output_initialisation=output_initialisation,
-        tick_decl_args=tick_decl_args.join(", "),
+        prefix = parse_result.module_name,
+        input_members = input_members,
+        output_members = output_members,
+        input_initialisation = input_initialisation,
+        output_initialisation = output_initialisation,
+        tick_decl_args = tick_decl_args.join(", "),
     ))
 }

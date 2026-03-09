@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::{path::PathBuf, fs};
+use std::{fs, path::PathBuf};
 
 use clap::Parser;
 

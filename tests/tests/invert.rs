@@ -122,16 +122,40 @@ int main(int argc, char* argv[]) {
     std::fs::write(&cpp_path, cpp).expect("error writing main.cpp");
 
     // 1. Run the binary to generate the Rust code etc.
-    cotim(&["--input", sv_path.to_str().unwrap(), "--rs", rs_dpi_path.to_str().unwrap(), "--sv", sv_dpi_path.to_str().unwrap()], None).expect("error running cotim");
+    cotim(
+        &[
+            "--input",
+            sv_path.to_str().unwrap(),
+            "--rs",
+            rs_dpi_path.to_str().unwrap(),
+            "--sv",
+            sv_dpi_path.to_str().unwrap(),
+        ],
+        None,
+    )
+    .expect("error running cotim");
 
     // 2. Compile the Rust crate to cdylib.
     cargo(&["build"], Some(&temp_dir_path)).expect("error running cargo build");
 
     // 3. Run Verilator/VCS/Questa and link with it.
-    verilator(&["--cc", "-sv", &format!("-I{}", temp_dir_path.to_str().unwrap()), sv_path.to_str().unwrap(), "--exe", cpp_path.to_str().unwrap(), "--build", "--top-module", "top", rs_dylib_path.to_str().unwrap()], Some(&temp_dir_path)).expect("error running verilator");
+    verilator(
+        &[
+            "--cc",
+            "-sv",
+            &format!("-I{}", temp_dir_path.to_str().unwrap()),
+            sv_path.to_str().unwrap(),
+            "--exe",
+            cpp_path.to_str().unwrap(),
+            "--build",
+            "--top-module",
+            "top",
+            rs_dylib_path.to_str().unwrap(),
+        ],
+        Some(&temp_dir_path),
+    )
+    .expect("error running verilator");
 
     // 4. Run the testbench.
     command("obj_dir/Vtop", &[], Some(&temp_dir_path)).expect("error running testbench");
-
-
 }

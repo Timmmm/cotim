@@ -1,11 +1,11 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::{collections::HashMap, path::Path};
 use sv_parser::{
-    parse_sv, AnsiPortDeclaration, ConstantExpression, ConstantPrimary, DecimalNumber,
-    IntegralNumber, ModuleDeclarationAnsi, NodeEvent, Number, PrimaryLiteral, RefNode, Signing,
-    SyntaxTree, PackedDimension, AttributeInstance,
+    AnsiPortDeclaration, AttributeInstance, ConstantExpression, ConstantPrimary, DecimalNumber,
+    IntegralNumber, ModuleDeclarationAnsi, NodeEvent, Number, PackedDimension, PrimaryLiteral,
+    RefNode, Signing, SyntaxTree, parse_sv,
 };
 
 /// Port direction.
@@ -30,7 +30,6 @@ pub struct Port {
     /// True if there is a (* trigger *) attribute for this port.
     pub trigger: bool,
 }
-
 
 /// Result of parsing the .sv file. It should contain a single module
 /// with some ports.
@@ -79,8 +78,6 @@ fn get_direction(port_decl: &AnsiPortDeclaration) -> Result<Direction> {
     })
 }
 
-
-
 enum SimpleConstant {
     UnsignedDecimal(u64),
     String(String),
@@ -88,25 +85,42 @@ enum SimpleConstant {
 
 /// Return the unsigned number or string from a constant expression. It must be a plain
 /// decimal number (or string) for this to succeed.
-fn get_simple_constant(node: &ConstantExpression, syntax_tree: &SyntaxTree) -> Result<SimpleConstant> {
-    let ConstantExpression::ConstantPrimary(constant_primary) = node else { bail!("expected unsigned integer literal"); };
-    let ConstantPrimary::PrimaryLiteral(primary_literal) = constant_primary.as_ref() else { bail!("expected unsigned integer literal"); };
+fn get_simple_constant(
+    node: &ConstantExpression,
+    syntax_tree: &SyntaxTree,
+) -> Result<SimpleConstant> {
+    let ConstantExpression::ConstantPrimary(constant_primary) = node else {
+        bail!("expected unsigned integer literal");
+    };
+    let ConstantPrimary::PrimaryLiteral(primary_literal) = constant_primary.as_ref() else {
+        bail!("expected unsigned integer literal");
+    };
     Ok(match primary_literal.as_ref() {
         PrimaryLiteral::Number(number) => {
-            let Number::IntegralNumber(integral_number) = number.as_ref() else { bail!("expected unsigned integer literal"); };
-            let IntegralNumber::DecimalNumber(decimal_number) = integral_number.as_ref() else { bail!("expected unsigned integer literal"); };
-            let DecimalNumber::UnsignedNumber(unsigned_number) = decimal_number .as_ref() else { bail!("expected unsigned integer literal"); };
-            let text = syntax_tree.get_str_trim(unsigned_number).ok_or(anyhow!("couldn't find integer span in source"))?;
+            let Number::IntegralNumber(integral_number) = number.as_ref() else {
+                bail!("expected unsigned integer literal");
+            };
+            let IntegralNumber::DecimalNumber(decimal_number) = integral_number.as_ref() else {
+                bail!("expected unsigned integer literal");
+            };
+            let DecimalNumber::UnsignedNumber(unsigned_number) = decimal_number.as_ref() else {
+                bail!("expected unsigned integer literal");
+            };
+            let text = syntax_tree
+                .get_str_trim(unsigned_number)
+                .ok_or(anyhow!("couldn't find integer span in source"))?;
             SimpleConstant::UnsignedDecimal(text.parse()?)
-        },
+        }
         PrimaryLiteral::TimeLiteral(_) => bail!("unexpected time literal"),
         PrimaryLiteral::UnbasedUnsizedLiteral(_) => bail!("unexpected unbased unsized literal"),
         PrimaryLiteral::StringLiteral(string_literal) => {
-            let text = syntax_tree.get_str_trim(&string_literal.nodes.0).ok_or(anyhow!("couldn't find text span in source"))?;
+            let text = syntax_tree
+                .get_str_trim(&string_literal.nodes.0)
+                .ok_or(anyhow!("couldn't find text span in source"))?;
             // This is the raw quoted string, e.g. `"hello"`. I assume including escape sequences.
             // But for now we'll just strip the leading/trailing "".
             SimpleConstant::String(decode_string_literal(text)?)
-        },
+        }
     })
 }
 
@@ -131,7 +145,9 @@ fn get_packed_dimension_width(node: &PackedDimension, syntax_tree: &SyntaxTree) 
             let left = get_simple_constant(&r.nodes.0.nodes.1.nodes.0, syntax_tree)?;
             let right = get_simple_constant(&r.nodes.0.nodes.1.nodes.2, syntax_tree)?;
 
-            if let (SimpleConstant::UnsignedDecimal(left), SimpleConstant::UnsignedDecimal(right)) = (left, right) {
+            if let (SimpleConstant::UnsignedDecimal(left), SimpleConstant::UnsignedDecimal(right)) =
+                (left, right)
+            {
                 if right != 0 {
                     bail!("right part of range must be 0 (got {right})");
                 }
@@ -166,7 +182,6 @@ fn port_list(mod_def: &ModuleDeclarationAnsi, syntax_tree: &SyntaxTree) -> Resul
     let mut ports = Vec::new();
 
     for item in list {
-
         let trigger = get_attribute(&item.0, syntax_tree, "trigger")?;
 
         let trigger = match trigger {
@@ -240,19 +255,28 @@ fn port_list(mod_def: &ModuleDeclarationAnsi, syntax_tree: &SyntaxTree) -> Resul
                                     match v.nodes.2.as_slice() {
                                         [] => {}
                                         [inner_dim] => {
-                                            size_inner = get_packed_dimension_width(inner_dim, syntax_tree)?;
+                                            size_inner =
+                                                get_packed_dimension_width(inner_dim, syntax_tree)?;
                                         }
                                         [outer_dim, inner_dim] => {
-                                            size_inner = get_packed_dimension_width(inner_dim, syntax_tree)?;
-                                            size_outer = Some(get_packed_dimension_width(outer_dim, syntax_tree)?);
+                                            size_inner =
+                                                get_packed_dimension_width(inner_dim, syntax_tree)?;
+                                            size_outer = Some(get_packed_dimension_width(
+                                                outer_dim,
+                                                syntax_tree,
+                                            )?);
                                         }
                                         _ => {
-                                            bail!("ports must have a maximum of two packed dimensions");
+                                            bail!(
+                                                "ports must have a maximum of two packed dimensions"
+                                            );
                                         }
                                     }
                                 }
                                 _ => {
-                                    bail!("port data type must be vector (e.g. `input var logic[3:0] i_data`)");
+                                    bail!(
+                                        "port data type must be vector (e.g. `input var logic[3:0] i_data`)"
+                                    );
                                 }
                             },
                             sv_parser::DataTypeOrImplicit::ImplicitDataType(_) => {
@@ -281,17 +305,30 @@ fn port_list(mod_def: &ModuleDeclarationAnsi, syntax_tree: &SyntaxTree) -> Resul
     Ok(ports)
 }
 
-fn get_attribute(attribute_instances: &[AttributeInstance], syntax_tree: &SyntaxTree, attribute_name: &str) -> Result<Option<Option<SimpleConstant>>> {
+fn get_attribute(
+    attribute_instances: &[AttributeInstance],
+    syntax_tree: &SyntaxTree,
+    attribute_name: &str,
+) -> Result<Option<Option<SimpleConstant>>> {
     let mut result = None;
     for attribute_instance in attribute_instances {
         for attribute_spec in attribute_instance.nodes.1.contents() {
-            let identifier = syntax_tree.get_str_trim(&attribute_spec.nodes.0).ok_or(anyhow!("error getting string"))?;
+            let identifier = syntax_tree
+                .get_str_trim(&attribute_spec.nodes.0)
+                .ok_or(anyhow!("error getting string"))?;
             if identifier == attribute_name {
                 if result.is_some() {
                     bail!("duplicate attributes: {}", attribute_name);
                 }
                 // Get value.
-                let val = attribute_spec.nodes.1.as_ref().map(|(_, constant_expression)| get_simple_constant(constant_expression, syntax_tree)).transpose()?;
+                let val = attribute_spec
+                    .nodes
+                    .1
+                    .as_ref()
+                    .map(|(_, constant_expression)| {
+                        get_simple_constant(constant_expression, syntax_tree)
+                    })
+                    .transpose()?;
                 result = Some(val);
             }
         }
@@ -312,7 +349,10 @@ fn analyze_defs(syntax_tree: &SyntaxTree) -> Result<ParseResult> {
                 }
 
                 let module_name = &mod_def.nodes.0.nodes.3.nodes.0;
-                let module_name = syntax_tree.get_str_trim(module_name).ok_or(anyhow!("error getting string"))?.to_owned();
+                let module_name = syntax_tree
+                    .get_str_trim(module_name)
+                    .ok_or(anyhow!("error getting string"))?
+                    .to_owned();
 
                 let trigger = get_attribute(&mod_def.nodes.0.nodes.0, syntax_tree, "trigger")?;
 
@@ -325,18 +365,15 @@ fn analyze_defs(syntax_tree: &SyntaxTree) -> Result<ParseResult> {
                     _ => {
                         bail!("trigger attribute on module must specify a string value");
                     }
-
                 };
 
                 let ports = port_list(mod_def, syntax_tree)?;
 
-                result = Some(
-                    ParseResult {
-                        trigger,
-                        module_name,
-                        ports,
-                    }
-                );
+                result = Some(ParseResult {
+                    trigger,
+                    module_name,
+                    ports,
+                });
             }
             _ => {}
         }
@@ -352,11 +389,18 @@ pub fn validate(parse_result: &ParseResult) -> Result<()> {
             bail!("Port '{}' inner size must be at least 1", port.name);
         }
         if port.size_inner > 128 {
-            bail!("Port '{}' inner size must be at most 128. To pass more data use a 2D packed array.", port.name);
+            bail!(
+                "Port '{}' inner size must be at most 128. To pass more data use a 2D packed array.",
+                port.name
+            );
         }
     }
 
-    let unique_names = parse_result.ports.iter().map(|port| port.name.as_str()).collect::<HashSet<&str>>();
+    let unique_names = parse_result
+        .ports
+        .iter()
+        .map(|port| port.name.as_str())
+        .collect::<HashSet<&str>>();
     if unique_names.len() != parse_result.ports.len() {
         bail!("Port names must be unique");
         // TODO: Say which names are duplicate.
@@ -366,7 +410,12 @@ pub fn validate(parse_result: &ParseResult) -> Result<()> {
         bail!("Port names cannot contain '___'");
     }
 
-    let trigger_count = parse_result.trigger.is_some() as u64 + parse_result.ports.iter().map(|port| port.trigger as u64).sum::<u64>();
+    let trigger_count = parse_result.trigger.is_some() as u64
+        + parse_result
+            .ports
+            .iter()
+            .map(|port| port.trigger as u64)
+            .sum::<u64>();
 
     if trigger_count != 1 {
         bail!("exactly one trigger attribute must be present (either on a port or on the module)");
