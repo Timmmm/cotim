@@ -23,16 +23,7 @@ module mux(
     output var logic[1:0][127:0] o_wide
 );
 
-endmodule;
-```
-
-Next, include a generated file in it.
-
-```
-module mux(
-...
-);
-
+// Include this generated file.
 `include "mux.dpi.sv"
 
 endmodule;
