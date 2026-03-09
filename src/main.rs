@@ -1,10 +1,7 @@
 use anyhow::Result;
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Parser;
-
-mod generator;
-mod parser;
 
 /// Cotim generator.
 #[derive(Parser, Debug)]
@@ -26,14 +23,5 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let parse_result = parser::parse(&args.input)?;
-
-    parser::validate(&parse_result)?;
-
-    let output = generator::generate(&parse_result)?;
-
-    fs::write(args.sv, output.sv)?;
-    fs::write(args.rs, output.rs)?;
-
-    Ok(())
+    cotim::build(&args.input, &args.sv, &args.rs)
 }
