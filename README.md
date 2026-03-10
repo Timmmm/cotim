@@ -45,7 +45,7 @@ struct Instance {
 }
 
 impl Instance {
-    fn new(module_path: &str) -> Arc<Mutex<Self>> {
+    fn new(module_path: &str, plusarg: &str) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             x: "hello".to_string(),
         }))

@@ -201,14 +201,16 @@ fn generate_sv(parse_result: &ParseResult) -> Result<String> {
 
     Ok(format!(
         r#"
-    import "DPI-C" function chandle {prefix}_new({new_decl_args});
+    import "DPI-C" function chandle {prefix}_new(input string module_path, input string plusargs);
     import "DPI-C" function void {prefix}_free(input chandle ___instance);
     import "DPI-C" function byte unsigned {prefix}_tick({tick_decl_args});
 
     chandle ___instance___ = null;
 
     initial begin
-        ___instance___ = {prefix}_new({new_call_args});
+        automatic string plusarg;
+        $value$plusargs("{prefix}=%s", plusarg);
+        ___instance___ = {prefix}_new($sformatf("%m"), plusarg);
         if (___instance___ == null) begin
             $fatal(0, "Failed to create {prefix} instance.");
         end
@@ -229,9 +231,7 @@ fn generate_sv(parse_result: &ParseResult) -> Result<String> {
     "#,
         prefix = parse_result.module_name,
         trigger = parse_result.sv_trigger_expression()?,
-        new_decl_args = "", // TODO: Add new args.
         tick_decl_args = tick_decl_args.join(", "),
-        new_call_args = "",
         tick_call_args = tick_call_args.join(", "),
     ))
 }
@@ -244,7 +244,8 @@ fn generate_rs(parse_result: &ParseResult) -> Result<String> {
     // }
 
     // impl Instance {
-    //     fn new(module_path: &str) -> Result<Arc<Mutex<Self>>> {
+    //     fn new(module_path: &str, plusarg: &str) -> Result<Arc<Mutex<Self>>> {
+    //         // plusarg is an empty string if not given.
     //         Arc::new(Mutex::new(Self {
     //             x: "hello".to_string(),
     //         }))
@@ -279,7 +280,7 @@ fn generate_rs(parse_result: &ParseResult) -> Result<String> {
     }
     Ok(format!(
         r#"
-use std::sync::{{Arc, Mutex}};
+use std::{{ffi::CStr, sync::{{Arc, Mutex}}}};
 use bitvec::{{slice::BitSlice, ptr::{{bitslice_from_raw_parts, bitslice_from_raw_parts_mut}}}};
 use super::Instance;
 
@@ -291,9 +292,15 @@ pub struct Outputs<'a> {{
 {output_members}
 }}
 
-#[no_mangle]
-extern "C" fn {prefix}_new(module_path: &str) -> *const Mutex<Instance> {{
-    match Instance::new(module_path) {{
+#[unsafe(no_mangle)]
+extern "C" fn {prefix}_new(module_path: *const i8, plusarg: *const i8) -> *const Mutex<Instance> {{
+    let module_path = unsafe {{ CStr::from_ptr(module_path) }}
+        .to_str()
+        .expect("module path is not valid UTF-8");
+    let plusarg = unsafe {{ CStr::from_ptr(plusarg) }}
+        .to_str()
+        .expect("plusarg is not valid UTF-8");
+    match Instance::new(module_path, plusarg) {{
         Ok(instance) => {{
             Arc::into_raw(instance)
         }}
@@ -310,7 +317,8 @@ enum ReturnCode {{
     Failure = 1,
 }}
 
-#[no_mangle]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
 extern "C" fn {prefix}_tick({tick_decl_args}) -> ReturnCode {{
     unsafe {{
         let inputs = Inputs {{
@@ -332,7 +340,7 @@ extern "C" fn {prefix}_tick({tick_decl_args}) -> ReturnCode {{
     }}
 }}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn {prefix}_free(instance: *const Mutex<Instance>) {{
     // Make new Arc and drop it to free it.
     unsafe {{
