@@ -1,5 +1,5 @@
-use std::{fs, path::Path};
 use anyhow::Result;
+use std::{fs, path::Path};
 
 mod generator;
 mod parser;

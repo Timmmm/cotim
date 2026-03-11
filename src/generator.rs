@@ -69,12 +69,23 @@ impl PortGenerationUtils for Port {
     // struct field.
     fn rs_field_type(&self) -> String {
         let ref_type = match self.direction {
-            Direction::Input => "&'a ",
+            Direction::Input => {
+                if self.size_inner == 1 {
+                    ""
+                } else {
+                    "&'a "
+                }
+            }
             Direction::Output => "&'a mut ",
         };
+        let inner_type = if self.size_inner == 1 {
+            "bool"
+        } else {
+            "BitSlice<u32>"
+        };
         match self.size_outer {
-            Some(size_outer) => format!("[{ref_type}BitSlice<u32>; {}]", size_outer),
-            None => format!("{ref_type}BitSlice<u32>"),
+            Some(size_outer) => format!("[{ref_type}{inner_type}; {}]", size_outer),
+            None => format!("{ref_type}{inner_type}"),
         }
     }
 
@@ -94,10 +105,15 @@ impl PortGenerationUtils for Port {
                 None => name.clone(),
             };
 
+            let index_range = if self.size_inner == 1 {
+                "".to_string()
+            } else {
+                format!("[{}:0]", self.size_inner - 1)
+            };
+
             decl_args.push(format!(
-                "{} bit[{}:0] {decl_name}",
+                "{} bit{index_range} {decl_name}",
                 self.sv_arg_decl_direction(),
-                self.size_inner - 1
             ));
             call_args.push(format!("{name}{outer_slice_fragment}"));
         };
@@ -127,11 +143,13 @@ impl PortGenerationUtils for Port {
                 None => self.name.clone(),
             };
 
-            let ptr_type = match self.direction {
-                Direction::Input => "*const",
-                Direction::Output => "*mut",
+            let decl_type = match (&self.direction, self.size_inner == 1) {
+                (Direction::Input, true) => "bool",
+                (Direction::Output, true) => "*mut bool",
+                (Direction::Input, false) => "*const u32",
+                (Direction::Output, false) => "*mut u32",
             };
-            decl_args.push(format!("{decl_name}: {ptr_type} u32"));
+            decl_args.push(format!("{decl_name}: {decl_type}"));
         };
 
         match self.size_outer {
@@ -155,30 +173,53 @@ impl PortGenerationUtils for Port {
     fn rs_input_output_initialisation(&self, direction: Direction) -> String {
         if self.direction == direction {
             let name = &self.name;
-            let size_inner = &self.size_inner;
+            let size_inner = self.size_inner;
 
-            let func = match self.direction {
-                Direction::Input => "bitslice_from_raw_parts",
-                Direction::Output => "bitslice_from_raw_parts_mut",
-            };
             let ref_type = match self.direction {
-                Direction::Input => "&",
+                Direction::Input => {
+                    if size_inner == 1 {
+                        ""
+                    } else {
+                        "& "
+                    }
+                }
                 Direction::Output => "&mut ",
             };
-            match self.size_outer {
-                Some(size_outer) => {
-                    let elems = (0..size_outer)
-                        .map(|i| {
-                            format!(
-                                "{ref_type}*{func}({name}___{i}.try_into().unwrap(), {size_inner})"
-                            )
-                        })
-                        .collect::<Vec<String>>()
-                        .join(",");
-                    format!("{name}: [{elems}],")
+            if size_inner == 1 {
+                match self.size_outer {
+                    Some(size_outer) => {
+                        let elems = (0..size_outer)
+                            .map(|i| format!("{ref_type}{name}___{i}"))
+                            .collect::<Vec<String>>()
+                            .join(",");
+                        format!("{name}: [{elems}],")
+                    }
+                    None => {
+                        format!("{name}: {ref_type}{name},")
+                    }
                 }
-                None => {
-                    format!("{name}: {ref_type}*{func}({name}.try_into().unwrap(), {size_inner}),")
+            } else {
+                let func = match self.direction {
+                    Direction::Input => "bitslice_from_raw_parts",
+                    Direction::Output => "bitslice_from_raw_parts_mut",
+                };
+                match self.size_outer {
+                    Some(size_outer) => {
+                        let elems = (0..size_outer)
+                            .map(|i| {
+                                format!(
+                                    "{ref_type}*{func}({name}___{i}.try_into().unwrap(), {size_inner})"
+                                )
+                            })
+                            .collect::<Vec<String>>()
+                            .join(",");
+                        format!("{name}: [{elems}],")
+                    }
+                    None => {
+                        format!(
+                            "{name}: {ref_type}*{func}({name}.try_into().unwrap(), {size_inner}),"
+                        )
+                    }
                 }
             }
         } else {
