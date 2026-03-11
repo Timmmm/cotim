@@ -175,17 +175,12 @@ impl PortGenerationUtils for Port {
             let name = &self.name;
             let size_inner = self.size_inner;
 
-            let ref_type = match self.direction {
-                Direction::Input => {
-                    if size_inner == 1 {
-                        ""
-                    } else {
-                        "& "
-                    }
-                }
-                Direction::Output => "&mut ",
-            };
             if size_inner == 1 {
+                let ref_type = match self.direction {
+                    Direction::Input => "",
+                    Direction::Output => "&mut *",
+                };
+
                 match self.size_outer {
                     Some(size_outer) => {
                         let elems = (0..size_outer)
@@ -199,6 +194,11 @@ impl PortGenerationUtils for Port {
                     }
                 }
             } else {
+                let ref_type = match self.direction {
+                    Direction::Input => "& ",
+                    Direction::Output => "&mut ",
+                };
+
                 let func = match self.direction {
                     Direction::Input => "bitslice_from_raw_parts",
                     Direction::Output => "bitslice_from_raw_parts_mut",
@@ -321,12 +321,15 @@ fn generate_rs(parse_result: &ParseResult) -> Result<String> {
     }
     Ok(format!(
         r#"
-use std::{{ffi::CStr, sync::{{Arc, Mutex}}}};
+use std::{{ffi::CStr, sync::{{Arc, Mutex}}, marker::PhantomData}};
 use bitvec::{{slice::BitSlice, ptr::{{bitslice_from_raw_parts, bitslice_from_raw_parts_mut}}}};
 use super::Instance;
 
 pub struct Inputs<'a> {{
 {input_members}
+    // This may not be needed if all members are bool, but it avoids surprises
+    // when adding a new member that isn't a bool.
+    __phantom: PhantomData<&'a ()>,
 }}
 
 pub struct Outputs<'a> {{
@@ -364,6 +367,7 @@ extern "C" fn {prefix}_tick({tick_decl_args}) -> ReturnCode {{
     unsafe {{
         let inputs = Inputs {{
             {input_initialisation}
+            __phantom: PhantomData,
         }};
         let mut outputs = Outputs {{
             {output_initialisation}
