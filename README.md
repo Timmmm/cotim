@@ -2,7 +2,7 @@
 
 Cotim is a simple tool to help SystemVerilog modules in Rust using DPI-C.
 
-First you write a SystemVerilog module that you want to implement in Rust:
+First you write a SystemVerilog module that you want to implement in Rust. Use a `trigger` annotation to indicate the clock.
 
 ```
 // Either a full expression (useful for multiple triggers)
@@ -49,7 +49,6 @@ impl Instance {
         Arc::new(Mutex::new(Self {
             x: "hello".to_string(),
         }))
-        // Can optionally save in registry.
     }
 
     fn tick(&mut self, inputs: Inputs) -> Outputs {
@@ -57,3 +56,7 @@ impl Instance {
     }
 }
 ```
+
+`plusarg` will be based on the plusarg given to the simulator, e.g. `+mux=foo=1;baz=2` will set `plusarg` to `foo=1;baz=2`. It will be an empty string if not given.
+
+Any single-`bit` or `logic` argument gets passed as `bool` or `&mut bool` in `Inputs` and `Outputs`. Bit vectors get passed using the `bitvec` crate. Packed arrays are not supported, but 2D packed arrays are (each outer array is passed as a separate argument). All sizes must be integer constants (not parameters).

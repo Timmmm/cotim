@@ -290,7 +290,6 @@ fn generate_rs(parse_result: &ParseResult) -> Result<String> {
     //         Arc::new(Mutex::new(Self {
     //             x: "hello".to_string(),
     //         }))
-    //         // Can optionally save in registry.
     //     }
 
     //     fn tick(&mut self, inputs: Inputs) -> Result<Outputs> {

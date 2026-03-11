@@ -8,9 +8,8 @@ use tempfile::tempdir;
 fn test_verilator() {
     // Make temporary directory.
     let temp_dir = tempdir().expect("error making temporary directory");
-    // TODO: Revert when it's working
-    // let temp_dir_path = temp_dir.path();
-    let temp_dir_path = temp_dir.keep();
+
+    let temp_dir_path = temp_dir.path();
 
     dbg!(&temp_dir_path);
 
