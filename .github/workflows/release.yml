@@ -54,7 +54,7 @@ jobs:
       - name: Upload wheel
         uses: actions/upload-artifact@v6
         with:
-          name: wheels
+          name: wheel-${{ matrix.os }}
           path: target/wheels/*.whl
 
       - name: Rename Output
