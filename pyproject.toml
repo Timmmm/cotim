@@ -1,0 +1,11 @@
+[project]
+name = "cotim"
+version = "0.1.0"
+description = "Write SystemVerilog modules in Rust"
+
+[build-system]
+requires = ["maturin>=1.12,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "bin"
