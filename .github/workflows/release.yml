@@ -28,7 +28,7 @@ jobs:
             output_executable: target/release/cotim.exe
             output_executable_upload_as: cotim-windows.exe
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       - name: Install Musl target
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -49,7 +49,7 @@ jobs:
           maturin build --release --strip --locked ${{ matrix.cargo_extra_flags }}
 
       - name: Upload wheel
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: wheels
           path: target/wheels/*.whl
@@ -59,7 +59,7 @@ jobs:
         run: Move-Item -Path "${{ matrix.output_executable }}" -Destination "target/${{ matrix.output_executable_upload_as }}"
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
