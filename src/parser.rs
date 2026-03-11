@@ -381,17 +381,11 @@ fn analyze_defs(syntax_tree: &SyntaxTree) -> Result<ParseResult> {
 }
 
 pub fn validate(parse_result: &ParseResult) -> Result<()> {
-    // Check that all inner dimensions are in [1, 128] and, that port names
+    // Check that all inner dimensions are at least 1 and, that port names
     // are unique and that there is exactly one trigger specified.
     for port in parse_result.ports.iter() {
         if port.size_inner < 1 {
             bail!("Port '{}' inner size must be at least 1", port.name);
-        }
-        if port.size_inner > 128 {
-            bail!(
-                "Port '{}' inner size must be at most 128. To pass more data use a 2D packed array.",
-                port.name
-            );
         }
     }
 
