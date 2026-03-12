@@ -2,6 +2,9 @@
 name = "cotim"
 version = "0.1.0"
 edition = "2024"
+description = "Write SystemVerilog modules in Rust"
+license = "MIT"
+repository = "https://github.com/Timmmm/cotim"
 
 [dependencies]
 anyhow = { version = "1.0.102", features = ["backtrace"] }
