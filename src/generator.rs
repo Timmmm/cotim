@@ -250,7 +250,7 @@ fn generate_sv(parse_result: &ParseResult) -> Result<String> {
 
     initial begin
         automatic string plusarg;
-        $value$plusargs("{prefix}=%s", plusarg);
+        void'($value$plusargs("{prefix}=%s", plusarg));
         ___instance___ = {prefix}_new($sformatf("%m"), plusarg);
         if (___instance___ == null) begin
             $fatal(0, "Failed to create {prefix} instance.");
