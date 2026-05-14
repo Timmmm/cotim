@@ -269,7 +269,7 @@ fn generate_sv(parse_result: &ParseResult) -> Result<String> {
             $fatal(0, "Failed to tick {prefix} instance.");
         end
     end
-    "#,
+"#,
         prefix = parse_result.module_name,
         trigger = parse_result.sv_trigger_expression()?,
         tick_decl_args = tick_decl_args.join(", "),
