@@ -321,7 +321,7 @@ fn generate_rs(parse_result: &ParseResult) -> Result<String> {
     Ok(format!(
         r#"
 #![allow(unused)]
-use std::{{ffi::CStr, sync::{{Arc, Mutex}}, marker::PhantomData}};
+use std::{{ffi::{CStr, c_char}, sync::{{Arc, Mutex}}, marker::PhantomData}};
 use bitvec::{{slice::BitSlice, ptr::{{bitslice_from_raw_parts, bitslice_from_raw_parts_mut}}}};
 use super::Instance;
 
@@ -337,7 +337,7 @@ pub struct Outputs<'a> {{
 }}
 
 #[unsafe(no_mangle)]
-extern "C" fn {prefix}_new(module_path: *const i8, plusarg: *const i8) -> *const Mutex<Instance> {{
+extern "C" fn {prefix}_new(module_path: *const c_char, plusarg: *const c_char) -> *const Mutex<Instance> {{
     let module_path = unsafe {{ CStr::from_ptr(module_path) }}
         .to_str()
         .expect("module path is not valid UTF-8");
