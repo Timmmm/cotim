@@ -68,3 +68,20 @@ jobs:
         with:
           files: "target/${{ matrix.output_executable_upload_as }}"
           fail_on_unmatched_files: true
+
+  pypi-publish:
+    name: Upload release to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      # Required for PyPI OpenID Connect.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          # Match upload-artifact 'name'.
+          pattern: wheel-*
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
