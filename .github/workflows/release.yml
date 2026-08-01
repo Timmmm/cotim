@@ -57,6 +57,18 @@ jobs:
           name: wheel-${{ matrix.os }}
           path: target/wheels/*.whl
 
+      - name: Build source distribution
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          maturin sdist
+
+      - name: Upload source distribution
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheel-source
+          path: target/wheels/*.tar.gz
+
       - name: Rename Output
         shell: pwsh
         run: Move-Item -Path "${{ matrix.output_executable }}" -Destination "target/${{ matrix.output_executable_upload_as }}"
